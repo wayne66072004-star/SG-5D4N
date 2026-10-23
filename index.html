@@ -7,6 +7,11 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts: 搭配無印風的乾淨字體 -->
@@ -248,6 +253,14 @@
             </div>
         </section>
 
+        
+        <!-- Tab 6: MAP -->
+        <section id="tab-map" class="tab-content h-full flex flex-col">
+            <h2 class="font-serif text-xl text-muji-dark border-b-2 border-muji-brown inline-block pb-1 mb-4 flex-shrink-0">行程地圖</h2>
+            <div class="text-xs text-muji-text mb-2"><i class="fa-solid fa-circle-info mr-1"></i>點擊圓點查看景點與行程天數</div>
+            <div id="itinerary-map" class="w-full flex-1 rounded-md shadow-muji border border-muji-border z-0 min-h-[400px] mb-8"></div>
+        </section>
+
         <!-- Tab 5: INFO -->
         <section id="tab-info" class="tab-content">
             <h2 class="font-serif text-xl text-muji-dark border-b-2 border-muji-brown inline-block pb-1 mb-6">實用資訊</h2>
@@ -297,8 +310,14 @@
     <nav class="bg-muji-white border-t border-muji-border fixed bottom-0 w-full z-50 px-2 py-2 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
         <ul class="flex justify-between items-center text-muji-text text-[10px] font-medium">
             <li class="flex-1">
+                <button class="nav-btn w-full flex flex-col items-center py-1 transition-colors" data-target="tab-map">
+                    <i class="fa-solid fa-map text-lg mb-1"></i><span>地圖</span>
+                </button>
+            </li>
+
+            <li class="flex-1">
                 <button class="nav-btn w-full flex flex-col items-center py-1 text-muji-brown transition-colors" data-target="tab-plan">
-                    <i class="fa-solid fa-map-location-dot text-lg mb-1"></i><span>行程</span>
+                    <i class="fa-solid fa-list-ul text-lg mb-1"></i><span>行程</span>
                 </button>
             </li>
             <li class="flex-1">
@@ -333,7 +352,8 @@
 
     <script>
         // --- 核心資料 (無印極簡風配色標記) ---
-        const itineraryData = [
+        
+const itineraryData = [
     {
         "day": "Day 1 (11/14 週六)",
         "title": "",
@@ -689,7 +709,69 @@
         ]
     }
 ];
+
         
+        
+        let mapInitialized = false;
+        let map;
+        const locations = [
+            { name: '樟宜機場 (Changi Airport)', lat: 1.3644, lng: 103.9915, day: 'Day 1 / Day 5' },
+            { name: 'PARKROYAL COLLECTION Marina Bay', lat: 1.2913, lng: 103.8577, day: '住宿 (Day 1 - Day 5)' },
+            { name: 'Marina Square', lat: 1.2913, lng: 103.8566, day: 'Day 1' },
+            { name: '濱海灣花園 (Gardens by the Bay)', lat: 1.2816, lng: 103.8636, day: 'Day 1' },
+            { name: '金沙水舞廣場', lat: 1.2838, lng: 103.8591, day: 'Day 1' },
+            { name: '老巴剎 (Lau Pa Sat)', lat: 1.2806, lng: 103.8504, day: 'Day 1' },
+            { name: '亞坤 (Ya Kun)', lat: 1.2810, lng: 103.8483, day: 'Day 2' },
+            { name: '魚尾獅公園 (Merlion Park)', lat: 1.2868, lng: 103.8545, day: 'Day 2' },
+            { name: '新達城 (Suntec City)', lat: 1.2946, lng: 103.8587, day: 'Day 2' },
+            { name: '珍寶海鮮 (Riverside Point)', lat: 1.2897, lng: 103.8447, day: 'Day 2' },
+            { name: '新加坡動物園 (Singapore Zoo)', lat: 1.4043, lng: 103.7930, day: 'Day 3' },
+            { name: '結霜橋叻沙 (小印度)', lat: 1.3060, lng: 103.8560, day: 'Day 3' },
+            { name: '竹腳中心 / 印度廟', lat: 1.3064, lng: 103.8505, day: 'Day 3' },
+            { name: '蘇丹回教堂 (甘榜格南)', lat: 1.3023, lng: 103.8590, day: 'Day 3' },
+            { name: '港灣纜車站 (HarbourFront)', lat: 1.2655, lng: 103.8202, day: 'Day 4' },
+            { name: '聖淘沙 (Sentosa)', lat: 1.2494, lng: 103.8238, day: 'Day 4' },
+            { name: '麥士威熟食中心 (Maxwell)', lat: 1.2803, lng: 103.8447, day: 'Day 4' },
+            { name: '佛牙寺 / 牛車水老街', lat: 1.2813, lng: 103.8443, day: 'Day 4' },
+            { name: '了凡油雞飯 (Chinatown)', lat: 1.2826, lng: 103.8437, day: 'Day 4' },
+            { name: '星耀樟宜 (Jewel)', lat: 1.3602, lng: 103.9897, day: 'Day 5' }
+        ];
+
+        function initMap() {
+            if (mapInitialized) return;
+            map = L.map('itinerary-map', { zoomControl: false }).setView([1.2913, 103.8577], 13);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // 使用極簡風格的地圖圖磚 (Carto Voyager)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Muji 風格的地標 Icon
+            const mujiIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#8D7B68; width:14px; height:14px; border-radius:50%; border:2px solid #FFF; box-shadow: 0 0 5px rgba(0,0,0,0.3);'></div>",
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+
+            const hotelIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#5C7A99; width:16px; height:16px; border-radius:50%; border:2px solid #FFF; box-shadow: 0 0 5px rgba(0,0,0,0.3); display:flex; justify-content:center; align-items:center; color:white; font-size:8px;'><i class='fa-solid fa-bed'></i></div>",
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            locations.forEach(loc => {
+                const iconToUse = loc.name.includes('PARKROYAL') ? hotelIcon : mujiIcon;
+                L.marker([loc.lat, loc.lng], {icon: iconToUse})
+                 .addTo(map)
+                 .bindPopup(`<div style="font-family:'Noto Sans TC', sans-serif;"><b style="color:#333; font-size:14px;">${loc.name}</b><br><span style="color:#8D7B68; font-size:12px; font-weight:bold;">${loc.day}</span></div>`);
+            });
+
+            mapInitialized = true;
+        }
+
         let currentDayIndex = 0;
 
         // --- 初始化 ---
@@ -721,6 +803,13 @@
                     const target = btn.getAttribute('data-target');
                     document.getElementById(target).classList.add('active');
                     window.scrollTo(0, 0);
+                    
+                    if(target === 'tab-map') {
+                        setTimeout(() => {
+                            initMap();
+                            if(map) map.invalidateSize();
+                        }, 100);
+                    }
                 });
             });
         }
