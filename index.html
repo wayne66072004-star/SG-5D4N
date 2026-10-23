@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Singapore Trip | 家族旅行</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (HTTPS CDN 支援 GitHub Pages) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Leaflet Map -->
+    <!-- Leaflet Map (HTTPS CDN 支援 GitHub Pages) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-    <!-- Font Awesome -->
+    <!-- Font Awesome (HTTPS CDN) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -93,7 +94,8 @@
         .day-selector-container::-webkit-scrollbar { display: none; }
         .day-selector-container { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Leaflet Popups override for Muji style */
+        /* 避免 Leaflet 層級遮擋 */
+        .leaflet-container { z-index: 10 !important; }
         .leaflet-popup-content-wrapper { border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     </style>
 </head>
@@ -110,14 +112,6 @@
         </div>
     </header>
 
-    <!-- Shared Map Container (Visible only on PLAN and MAP tabs) -->
-    <div id="shared-map-wrapper" class="w-full h-[240px] relative z-10 flex-shrink-0 border-b border-muji-border hidden transition-all duration-300">
-        <div id="leaflet-map" class="w-full h-full"></div>
-        <button onclick="resetMapView()" class="absolute bottom-2 left-2 z-[400] bg-muji-white text-muji-dark text-[10px] px-2 py-1 rounded shadow-sm border border-muji-border hover:bg-gray-50 flex items-center">
-            <i class="fa-solid fa-expand mr-1"></i>重置全景
-        </button>
-    </div>
-
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto p-4 relative" id="main-container">
         
@@ -126,10 +120,6 @@
             <!-- Day Selector -->
             <div class="day-selector-container overflow-x-auto whitespace-nowrap mb-6 pb-1 sticky top-0 bg-muji-bg z-40 py-2">
                 <div class="flex space-x-2" id="day-tabs"></div>
-            </div>
-            
-            <div class="text-xs text-muji-text mb-4 bg-white p-2 rounded border border-muji-border shadow-sm flex items-center">
-                <i class="fa-solid fa-lightbulb text-muji-brown mr-2"></i> 點擊行程區塊，地圖會自動亮燈標示對應位置。
             </div>
 
             <!-- 行程時間軸容器 -->
@@ -140,10 +130,22 @@
 
         <!-- Tab 6: MAP (List View) -->
         <section id="tab-map" class="tab-content">
-            <h2 class="font-serif text-xl text-muji-dark border-b-2 border-muji-brown inline-block pb-1 mb-4">所有景點導覽</h2>
-            <p class="text-xs text-muji-text mb-4"><i class="fa-solid fa-hand-pointer mr-1"></i>點擊下方列表，即可在上方地圖亮燈查看確切位置：</p>
-            <div id="map-locations-list" class="space-y-2 pb-6">
-                <!-- JS generated list -->
+            <!-- 內嵌於 Map 分頁中的地圖區塊 -->
+            <div class="sticky top-0 z-40 bg-muji-bg pt-2 pb-2">
+                <h2 class="font-serif text-xl text-muji-dark border-b-2 border-muji-brown inline-block pb-1 mb-2 ml-1">行程地圖</h2>
+                <div class="relative w-full h-[40vh] border border-muji-border shadow-sm z-10 rounded-md overflow-hidden">
+                    <div id="leaflet-map" class="w-full h-full"></div>
+                    <button onclick="resetMapView()" class="absolute bottom-2 left-2 z-[400] bg-muji-white text-muji-dark text-[10px] px-2 py-1 rounded shadow-sm border border-muji-border hover:bg-gray-50 flex items-center">
+                        <i class="fa-solid fa-expand mr-1"></i>重置全景
+                    </button>
+                </div>
+            </div>
+            
+            <div class="pt-4 pb-6">
+                <p class="text-xs text-muji-text mb-4"><i class="fa-solid fa-hand-pointer mr-1"></i>點擊下方列表，即可在上方地圖亮燈查看確切位置：</p>
+                <div id="map-locations-list" class="space-y-2">
+                    <!-- JS generated list -->
+                </div>
             </div>
         </section>
 
@@ -386,19 +388,19 @@
             loadWalletData();
             loadChecklist();
             loadNotes();
-            
-            // 預設啟動時就初始化地圖 (因為首頁就是行程)
-            document.getElementById('shared-map-wrapper').classList.remove('hidden');
-            initMap();
         });
 
         // --- MAP: 地圖初始化與互動 ---
         function initMap() {
             if(mapInitialized) return;
+            // 由於設定在 tab 內，需要在有寬高時初始化
+            const mapEl = document.getElementById('leaflet-map');
+            if(!mapEl || mapEl.clientHeight === 0) return;
+            
             globalLeafletMap = L.map('leaflet-map', { zoomControl: false }).setView([1.2913, 103.8577], 12);
             L.control.zoom({ position: 'topright' }).addTo(globalLeafletMap);
 
-            // 使用超清晰極簡的地圖底圖
+            // 使用超清晰極簡的地圖底圖 (HTTPS)
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(globalLeafletMap);
@@ -474,6 +476,9 @@
                 btn.classList.add('border-muji-red', 'bg-red-50');
                 btn.querySelector('.pointer-icon').classList.replace('text-muji-text', 'text-muji-red');
             }
+            
+            // 地圖只在 map tab 顯示，自動滑動到頁面頂部以顯示地圖
+            window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
         // --- TAB 邏輯 ---
@@ -492,16 +497,12 @@
                     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
                     document.getElementById(target).classList.add('active');
                     
-                    // 控制地圖區塊的顯示與隱藏
-                    const mapWrapper = document.getElementById('shared-map-wrapper');
-                    if (target === 'tab-plan' || target === 'tab-map') {
-                        mapWrapper.classList.remove('hidden');
+                    // 當切換到地圖分頁時，初始化並更新大小
+                    if (target === 'tab-map') {
                         setTimeout(() => {
                             if(!mapInitialized) initMap();
                             else globalLeafletMap.invalidateSize();
-                        }, 50);
-                    } else {
-                        mapWrapper.classList.add('hidden');
+                        }, 100);
                     }
 
                     window.scrollTo(0, 0);
@@ -568,12 +569,8 @@
                     titleColor = 'text-muji-blue font-bold';
                 }
                 
-                // 點擊行程區塊，地圖會自動連動亮燈！
-                const onClickStr = ev.locId ? `onclick="highlightMapMarker('${ev.locId}'); window.scrollTo({top:0, behavior:'smooth'});"` : '';
-                const pointerClass = ev.locId ? 'cursor-pointer active:opacity-70' : '';
-                
                 html += `
-                <div class="timeline-item relative pl-5 ${typeClass} ${pointerClass}" ${onClickStr}>
+                <div class="timeline-item relative pl-5 ${typeClass}">
                     <div class="text-xs font-bold text-muji-text mb-0.5 tracking-wide">${ev.time}</div>
                     <div class="text-[15px] ${titleColor} leading-tight mb-1.5">${ev.title}</div>
                     ${ev.desc ? `<div class="text-xs text-muji-text leading-relaxed p-2.5 bg-white rounded-md border border-muji-border shadow-sm">${ev.desc}</div>` : ''}
